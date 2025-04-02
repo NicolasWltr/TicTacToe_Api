@@ -1,7 +1,7 @@
 import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
-@WebSocketGateway({ cors: { origin: '*'}}) 
+@WebSocketGateway({ path: '/socket.io', namespace: '/tictactoe/api', cors: { origin: '*'}}) 
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect{
   @WebSocketServer()
   server: Server;
