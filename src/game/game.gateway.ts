@@ -42,7 +42,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect{
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { gameId: string, gameState: any }
   ) {
-    if (this.playerGames.has(client.id)) this.clearClient(client.id);
+    if (this.playerGames.has(client.id)) this.clearClient(client);
 
     if(data.gameId) {
       if (!this.activeGames.has(data.gameId)) {
@@ -102,9 +102,21 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect{
       return;
     }
     
+    this.setGameState(gameId, gameState);
+
+    console.log(`Game ${gameId} updated by ${client.id}`);
+    console.log(this.activeGames);
+
     this.server.to(gameId).emit('update', { gameState });
   }
 
+  @SubscribeMessage('leaveGame')
+  leaveGame(
+    @ConnectedSocket() client: Socket
+  ) {
+    console.log(`Client ${client.id} left the game`);
+    this.clearClient(client);
+  }
 
   private generateGame(): string {
     let gameId = (Math.floor(Math.random() * 900000) + 100000).toString();
@@ -131,11 +143,25 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect{
     return true;
   }
 
-  private clearClient(clientId: string) {
+  private setGameState(gameId: string, gameState: any) {
+    const game = this.activeGames.get(gameId);
+    if (game) {
+      game.gameState = gameState;
+    }
+  }
+
+  private clearClient(client: Socket) {
+    let clientId = client.id;
+    
+    client.rooms.forEach((room: string) => {
+      client.leave(room);
+    });
+    
     while (this.playerGames.has(clientId)) {
       const gameId = this.playerGames.get(clientId);
       const game = this.activeGames.get(gameId!);
       if (game) {
+        game.players = game.players.filter(player => player !== clientId);
         if (game.players.length === 0) {
           this.activeGames.delete(gameId!);
           console.log(`Game ${gameId} deleted`);
